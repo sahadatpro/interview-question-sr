@@ -76,9 +76,10 @@
                             <dl class="row mb-0" style="height: 80px; overflow: hidden" id="variant-{{ $product->id }}">
                                 @foreach ($product->variantPrices as $productPrice)
                                 <dt class="col-sm-3 pb-0">
-                                    {{ $productPrice->variantOne->variant ?? '' }}
+                                    {{-- {{ $productPrice->variantOne->variant ?? '' }}
                                     / {{ $productPrice->variantTwo->variant ?? '' }}
-                                    / {{ $productPrice->variantThree->variant ?? '' }}
+                                    / {{ $productPrice->variantThree->variant ?? '' }} --}}
+                                    {{ $productPrice->title() }}
                                 </dt>
                                 <dd class="col-sm-9">
                                     <dl class="row mb-0">

@@ -61,7 +61,7 @@
               ref="myVueDropzone"
               id="dropzone"
               :options="dropzoneOptions"
-              @vdropzone-complete="afterUploadComplete"
+              @vdropzone-success="uploadSuccess"
             ></vue-dropzone>
           </div>
         </div>
@@ -82,12 +82,20 @@
             <h6 class="m-0 font-weight-bold text-primary">Variants</h6>
           </div>
           <div class="card-body">
-            <div class="row" v-for="(item, index) in product_variant">
+            <div
+              class="row"
+              v-for="(item, index) in product_variant"
+              :key="index"
+            >
               <div class="col-md-4">
                 <div class="form-group">
                   <label for="">Option</label>
                   <select v-model="item.option" class="form-control">
-                    <option v-for="variant in variants" :value="variant.id">
+                    <option
+                      v-for="(variant, index) in variants"
+                      :value="variant.id"
+                      :key="index"
+                    >
                       {{ variant.title }}
                     </option>
                   </select>
@@ -139,7 +147,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="variant_price in product_variant_prices">
+                  <tr
+                    v-for="(variant_price, index) in product_variant_prices"
+                    :key="index"
+                  >
                     <td>{{ variant_price.title }}</td>
                     <td>
                       <input
@@ -164,8 +175,21 @@
       </div>
     </div>
 
-    <button @click="saveProduct" type="submit" class="btn btn-lg btn-primary">
+    <button
+      v-if="!isEdit"
+      @click="saveProduct"
+      type="submit"
+      class="btn btn-lg btn-primary"
+    >
       Save
+    </button>
+    <button
+      v-if="isEdit"
+      @click="updateProduct"
+      type="submit"
+      class="btn btn-lg btn-primary"
+    >
+      Updated
     </button>
     <button type="button" class="btn btn-secondary btn-lg">Cancel</button>
   </section>
@@ -205,7 +229,6 @@ export default {
         thumbnailWidth: 150,
         maxFilesize: 0.5,
         uploadMultiple: false,
-        autoProcessQueue: false,
         addRemoveLinks: true,
         headers: {
           "X-CSRF-TOKEN":
@@ -215,7 +238,8 @@ export default {
       error: false,
       success: false,
       message: "",
-      errors: {},
+      isEdit: false,
+      productId: 0,
     };
   },
   methods: {
@@ -264,6 +288,14 @@ export default {
       return ans;
     },
 
+    uploadSuccess(file, response) {
+      if ((file.status = "success")) {
+        this.images.push(response);
+      } else {
+        console.log("Faild");
+      }
+    },
+
     // store product into database
     saveProduct() {
       let product = {
@@ -275,8 +307,6 @@ export default {
         product_variant_prices: this.product_variant_prices,
       };
 
-      this.$refs.myVueDropzone.processQueue();
-
       axios
         .post("/product", product)
         .then((response) => {
@@ -287,9 +317,16 @@ export default {
           this.product_sku = "";
           this.description = "";
           this.images = [];
+          this.product_variant = [
+            {
+              option: this.variants[0].id,
+              tags: [],
+            },
+          ];
           this.product_variant.tags = [];
           this.product_variant.tags = [];
           this.product_variant_prices = [];
+          this.$refs.myVueDropzone.removeAllFiles();
         })
         .catch((error) => {
           // if (error.response.status == 422) {
@@ -300,6 +337,46 @@ export default {
         });
 
       // console.log(product);
+    },
+
+    updateProduct() {
+      let product = {
+        title: this.product_name,
+        sku: this.product_sku,
+        description: this.description,
+        product_image: this.images,
+        product_variant: this.product_variant,
+        product_variant_prices: this.product_variant_prices,
+      };
+
+      axios
+        .put("/product/" + this.productId, product)
+        .then((response) => {
+          console.log(response.data);
+          this.onSuccess(response.data.message);
+
+          // this.product_name = "";
+          // this.product_sku = "";
+          // this.description = "";
+          // this.images = [];
+          // this.product_variant = [
+          //   {
+          //     option: this.variants[0].id,
+          //     tags: [],
+          //   },
+          // ];
+          // this.product_variant.tags = [];
+          // this.product_variant.tags = [];
+          // this.product_variant_prices = [];
+          this.$refs.myVueDropzone.removeAllFiles();
+        })
+        .catch((error) => {
+          // if (error.response.status == 422) {
+          //   this.setErrors(error.response.data.errors);
+          // } else {
+          // }
+          this.onFailure(error.response.data.message);
+        });
     },
 
     onSuccess(message) {
@@ -314,17 +391,52 @@ export default {
     setErrors(errors) {
       this.errors = errors;
     },
-
-    async afterUploadComplete(response) {
-      if ((response.status = "success")) {
-        console.log("Image has been uploaded.");
-      } else {
-        console.log("Faild");
-      }
-    },
   },
   mounted() {
     console.log("Component mounted.");
+  },
+  created() {
+    let path = window.location.pathname;
+    let segments = path.split("/");
+    if (segments[3] == "edit") {
+      let pId = segments[2];
+      this.isEdit = true;
+      this.productId = pId;
+      axios
+        .get("/get-product/" + pId)
+        .then((response) => {
+          let product = response.data.product;
+          let productVariants = response.data.productVariants;
+          let variantPrices = response.data.variantPrices;
+
+          this.product_name = product.title;
+          this.product_sku = product.sku;
+          this.description = product.description;
+
+          // variatn show
+          let exist_variants = [];
+          for (let key in productVariants) {
+            let tags = [];
+            productVariants[key].forEach((val, key) => {
+              tags.push(val.variant);
+            });
+
+            let obj = {
+              option: key,
+              tags: tags,
+            };
+            exist_variants.push(obj);
+          }
+
+          this.product_variant = exist_variants;
+
+          /* Variant Prices */
+          this.product_variant_prices = variantPrices;
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    }
   },
 };
 </script>

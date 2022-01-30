@@ -47,4 +47,13 @@ class ProductVariantPrice extends Model
      {
           return $this->belongsTo(ProductVariant::class, 'product_variant_three');
      }
+
+
+     public function title()
+     {
+          $one = $this->variantOne->variant ?? '';
+          $two = $this->variantTwo->variant ?? '';
+          $three = $this->variantThree->variant ?? '';
+          return $one . '/' . $two . '/' . $three;
+     }
 }

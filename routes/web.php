@@ -25,6 +25,7 @@ Route::get('/home', 'HomeController@index')->name('home');
 Route::middleware('auth')->group(function () {
     Route::resource('product-variant', 'VariantController');
     Route::post('product-image-upload', 'ProductController@upload')->name('product.upload');
+    Route::get('get-product/{id}', 'ProductController@getProduct')->name('get_product');
     Route::resource('product', 'ProductController');
     Route::resource('blog', 'BlogController');
     Route::resource('blog-category', 'BlogCategoryController');
